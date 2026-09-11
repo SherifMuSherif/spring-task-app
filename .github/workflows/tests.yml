@@ -10,9 +10,14 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+
+    permissions:
+      checks: write
+      contents: read
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up JDK
         uses: actions/setup-java@v5
@@ -24,5 +29,26 @@ jobs:
       - name: Make Maven wrapper executable
         run: chmod +x ./mvnw
 
-      - name: Run Tests
+      - name: Run Unit & Slice Tests
         run: ./mvnw test
+
+      - name: Run Full Integration Tests
+        run: mvn failsafe:integration-test failsafe:verify
+
+      - name: Publish Test Report
+        uses: ScalableCapital/action-surefire-report@v2
+        if: always()
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          check_name: "Java Test Summary"
+
+      - name: Generate HTML Report Site
+        run: mvn surefire-report:report-only surefire-report:failsafe-report-only
+        if: always()
+
+      - name: Upload HTML Test Report Artifact
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: test-execution-report
+          path: target/reports/
