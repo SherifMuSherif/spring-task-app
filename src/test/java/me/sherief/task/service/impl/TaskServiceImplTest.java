@@ -7,6 +7,7 @@ import me.sherief.task.domain.entity.TaskStatus;
 import me.sherief.task.repository.TaskRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -16,6 +17,8 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -28,72 +31,45 @@ class TaskServiceImplTest {
     private TaskServiceImpl taskService;
 
     @Test
-    void createTask_withValidTask_persistsAndCanBeFoundById() {
-        // Arrange
-        String title = "New Task";
-
+    void givenValidCreateTaskRequest_whenCreateTask_thenTaskIsCreatedWithCorrectValuesAndDefaults() {
+        // Given
         CreateTaskRequest request = new CreateTaskRequest(
-                title,
-                "New Description",
-                null,
-                TaskPriority.HIGH
-        );
-
-        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> {
-            Task taskToSave = invocation.getArgument(0);
-            taskToSave.setId(UUID.randomUUID());
-            return taskToSave;
-        });
-
-        // Act
-        Task result = taskService.createTask(request);
-
-        // Assert
-        assertThat(result).isNotNull();
-        assertThat(result.getTitle()).isEqualTo(title);
-        verify(taskRepository,times(1)).save(any(Task.class));
-
-    }
-
-    @Test
-    void createTask_savesAndReturnsTaskWithCorrectDefaults() {
-        // Arrange
-        String title = "New Task";
-
-        CreateTaskRequest request = new CreateTaskRequest(
-                title,
+                "New Task",
                 "New Description",
                 null,
                 TaskPriority.HIGH
         );
 
         UUID generatedId = UUID.randomUUID();
-        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> {
-            Task taskToSave = invocation.getArgument(0);
-            return new Task(
-                    generatedId,
-                    taskToSave.getTitle(),
-                    taskToSave.getDescription(),
-                    taskToSave.getDueDate(),
-                    taskToSave.getStatus(),
-                    taskToSave.getPriority(),
-                    taskToSave.getCreated(),
-                    taskToSave.getUpdated()
-            );
-        });
 
-        // Act
+        Task mockSavedTask = new Task();
+        mockSavedTask.setId(generatedId);
+
+        given(taskRepository.save(any(Task.class))).willReturn(mockSavedTask);
+
+        ArgumentCaptor<Task> taskCaptor = ArgumentCaptor.forClass(Task.class);
+
+        // When
+        Instant before = Instant.now();
         Task result = taskService.createTask(request);
+        Instant after = Instant.now();
 
-        // Assert
+        // Then
         assertThat(result).isNotNull();
         assertThat(result.getId()).isEqualTo(generatedId);
-        assertThat(result.getTitle()).isEqualTo(title);
 
-        assertThat(result.getStatus()).isEqualTo(TaskStatus.OPEN);
-        assertThat(result.getCreated()).isBeforeOrEqualTo(Instant.now());
-        assertThat(result.getUpdated()).isEqualTo(result.getCreated());
+        then(taskRepository).should(times(1)).save(taskCaptor.capture());
 
-        verify(taskRepository, times(1)).save(any(Task.class));
+        Task capturedTask = taskCaptor.getValue();
+
+        assertThat(capturedTask.getTitle()).isEqualTo(request.title());
+        assertThat(capturedTask.getDescription()).isEqualTo(request.description());
+        assertThat(capturedTask.getPriority()).isEqualTo(request.priority());
+
+        assertThat(capturedTask.getStatus()).isEqualTo(TaskStatus.OPEN);
+        assertThat(capturedTask.getCreated()).isBetween(before, after);
+        assertThat(capturedTask.getUpdated()).isEqualTo(capturedTask.getCreated());
     }
+
+
 }

@@ -24,8 +24,8 @@ public class TaskRepositoryTest {
     private TestEntityManager entityManager;
 
     @Test
-    public void findByStatus_ReturnsOnlyMatchingTasks() {
-        // Arrange
+    void givenTasksWithDifferentStatuses_whenFindByStatus_thenReturnsOnlyMatchingTasks() {
+        // Given
         Task openTask = createTaskWith(TaskStatus.OPEN, TaskPriority.MEDIUM);
         Task closedTask = createTaskWith(TaskStatus.COMPLETE, TaskPriority.MEDIUM);
 
@@ -33,17 +33,17 @@ public class TaskRepositoryTest {
         entityManager.persist(closedTask);
         entityManager.flush();
 
-        // Act
+        // When
         List<Task> result = taskRepository.findByStatus(TaskStatus.OPEN);
 
-        // Assert
+        // Then
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getStatus()).isEqualTo(TaskStatus.OPEN);
     }
 
     @Test
-    public void findByPriority_ReturnsOnlyMatchingTasks() {
-        // Arrange
+    void givenTasksWithDifferentPriorities_whenFindByPriority_thenReturnsOnlyMatchingTasks() {
+        // Given
         Task highTask = createTaskWith(TaskStatus.OPEN, TaskPriority.HIGH);
         Task lowTask = createTaskWith(TaskStatus.OPEN, TaskPriority.LOW);
 
@@ -51,17 +51,17 @@ public class TaskRepositoryTest {
         entityManager.persist(lowTask);
         entityManager.flush();
 
-        // Act
+        // When
         List<Task> result = taskRepository.findByPriority(TaskPriority.HIGH);
 
-        // Assert
+        // Then
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getPriority()).isEqualTo(TaskPriority.HIGH);
     }
 
     @Test
-    public void findByDueDate_ReturnOnlyMatchingTasks() {
-        // Arrange
+    void givenTasksWithDifferentDueDates_whenFindByDueDate_thenReturnsOnlyMatchingTasks() {
+        // Given
         LocalDate today = LocalDate.now();
         LocalDate tomorrow = LocalDate.now().plusDays(1);
 
@@ -72,10 +72,10 @@ public class TaskRepositoryTest {
         entityManager.persist(tomorrowTask);
         entityManager.flush();
 
-        // Act
+        // When
         List<Task> result = taskRepository.findByDueDate(today);
 
-        // Assert
+        // Then
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getDueDate()).isToday();
 
