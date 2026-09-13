@@ -11,8 +11,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Sort;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -71,5 +73,46 @@ class TaskServiceImplTest {
         assertThat(capturedTask.getUpdated()).isEqualTo(capturedTask.getCreated());
     }
 
+    @Test
+    void givenMultipleTasksExist_whenListTasks_thenReturnsAllTasksWithCreatedAscendingSort() {
+        // Given
+        Task task1 = new Task(
+                UUID.randomUUID(),
+                "Task 1",
+                null,
+                null,
+                TaskStatus.OPEN,
+                TaskPriority.MEDIUM,
+                Instant.now(),
+                Instant.now()
+        );
+        Task task2 = new Task(
+                UUID.randomUUID(),
+                "Task 2",
+                null,
+                null,
+                TaskStatus.COMPLETE,
+                TaskPriority.HIGH,
+                Instant.now(),
+                Instant.now()
+        );
+        given(taskRepository.findAll(any(Sort.class))).willReturn(List.of(task1, task2));
+
+        // When
+        List<Task> result = taskService.listTasks();
+
+        // Then
+        assertThat(result).hasSize(2);
+
+        ArgumentCaptor<Sort> sortCaptor = ArgumentCaptor.forClass(Sort.class);
+        then(taskRepository).should().findAll(sortCaptor.capture());
+
+        Sort capturedSort = sortCaptor.getValue();
+        Sort.Order sortOrder = capturedSort.getOrderFor("created");
+
+        assertThat(sortOrder).isNotNull();
+        assertThat(sortOrder.getDirection()).isEqualTo(Sort.Direction.ASC);
+
+    }
 
 }

@@ -18,10 +18,13 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -69,6 +72,7 @@ class TaskControllerTest {
                 .andExpect(jsonPath("$.title").value("API Test Task"))
                 .andExpect(jsonPath("$.id").exists());
 
+        then(taskService).should().createTask(any(CreateTaskRequest.class));
     }
 
     @Test
@@ -86,10 +90,11 @@ class TaskControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorMessage").value("Title must be between 1 and 255 characters"));
 
+        then(taskService).shouldHaveNoInteractions();
     }
 
     @Test
-    void givenExceedingMaxLengthTitle_whenCreateTask_thenReturnsBadRequest() throws Exception{
+    void givenExceedingMaxLengthTitle_whenCreateTask_thenReturnsBadRequest() throws Exception {
         String excessivelyLongTitle = "A".repeat(256);
         CreateTaskRequestDto badRequest = new CreateTaskRequestDto(
                 excessivelyLongTitle, "Description", null, TaskPriority.MEDIUM);
@@ -103,7 +108,7 @@ class TaskControllerTest {
     }
 
     @Test
-    void givenExceedingMaxLengthDescription_whenCreateTask_thenReturnsBadRequest() throws Exception{
+    void givenExceedingMaxLengthDescription_whenCreateTask_thenReturnsBadRequest() throws Exception {
         String excessivelyLongDescription = "A".repeat(1001);
         CreateTaskRequestDto badRequest = new CreateTaskRequestDto(
                 "Title", excessivelyLongDescription, null, TaskPriority.MEDIUM);
@@ -147,6 +152,49 @@ class TaskControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorMessage").value("Due date must be in the future"));
 
+    }
+
+    @Test
+    public void givenMultipleTasksExist_whenListTasks_thenReturnsAllTasks() throws Exception {
+
+        UUID taskId1 = UUID.randomUUID();
+        UUID taskId2 = UUID.randomUUID();
+
+        Task mockTask1 = new Task(
+                taskId1,
+                "Task One",
+                "Description",
+                null,
+                TaskStatus.OPEN,
+                TaskPriority.MEDIUM,
+                Instant.now(),
+                Instant.now()
+        );
+        Task mockTask2 = new Task(
+                taskId2,
+                "Task Two",
+                "Description",
+                null,
+                TaskStatus.OPEN,
+                TaskPriority.MEDIUM,
+                Instant.now(),
+                Instant.now()
+        );
+
+        given(taskService.listTasks()).willReturn(List.of(mockTask1, mockTask2));
+
+        mockMvc.perform(get("/api/v1/tasks"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].id").value(taskId1.toString()))
+                .andExpect(jsonPath("$[0].title").value("Task One"))
+                .andExpect(jsonPath("$[0].priority").value("MEDIUM"))
+                .andExpect(jsonPath("$[1].id").value(taskId2.toString()))
+                .andExpect(jsonPath("$[1].title").value("Task Two"))
+                .andExpect(jsonPath("$[1].status").value("OPEN"));
+
+        then(taskService).should().listTasks();
     }
 
 }
