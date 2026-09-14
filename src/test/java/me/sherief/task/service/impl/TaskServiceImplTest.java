@@ -186,4 +186,13 @@ class TaskServiceImplTest {
         then(taskRepository).should(times(1)).save(existingTask);
     }
 
+    @Test
+    void givenTaskExists_whenDeleteTask_thenTaskIsDeletedSuccessfully(){
+        UUID taskId = UUID.randomUUID();
+
+        taskService.deleteTask(taskId);
+
+        then(taskRepository).should(times(1)).deleteById(taskId);
+    }
+
 }

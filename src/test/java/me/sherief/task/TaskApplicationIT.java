@@ -220,4 +220,29 @@ class TaskApplicationIT {
                 .expectStatus().isNotFound();
     }
 
+    @Test
+    void givenExistingTask_whenDeleteTaskRequestIsSent_thenTaskIsDeletedFromDatabase() {
+        Task existingTask = new Task(
+                null,
+                "Delete Me",
+                "Task to delete",
+                null,
+                TaskStatus.OPEN,
+                TaskPriority.HIGH,
+                Instant.now().minusSeconds(1000),
+                Instant.now()
+        );
+
+        Task savedTask = taskRepository.save(existingTask);
+
+        restClient.delete()
+                .uri("/api/v1/tasks/{taskId}", savedTask.getId())
+                .exchange()
+                .expectStatus().isNoContent();
+
+        Optional<Task> taskInDb = taskRepository.findById(savedTask.getId());
+
+        assertThat(taskInDb).isEmpty();
+    }
+
 }

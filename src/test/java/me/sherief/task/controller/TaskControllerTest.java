@@ -27,8 +27,7 @@ import java.util.UUID;
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.then;
+import static org.mockito.BDDMockito.*;
 import static org.mockito.Mockito.times;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -379,5 +378,16 @@ class TaskControllerTest {
 
     }
 
+    @Test
+    void givenExistingTask_whenDeleteTask_thenReturnsNoContent() throws Exception {
+        UUID taskId = UUID.randomUUID();
+
+        mockMvc.perform(delete("/api/v1/tasks/{taskId}", taskId))
+                .andExpect(status().isNoContent());
+
+        then(taskService)
+                .should()
+                .deleteTask(taskId);
+    }
 
 }
