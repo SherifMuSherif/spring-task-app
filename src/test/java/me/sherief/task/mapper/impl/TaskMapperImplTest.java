@@ -1,8 +1,10 @@
 package me.sherief.task.mapper.impl;
 
 import me.sherief.task.domain.CreateTaskRequest;
+import me.sherief.task.domain.UpdateTaskRequest;
 import me.sherief.task.domain.dto.CreateTaskRequestDto;
 import me.sherief.task.domain.dto.TaskDto;
+import me.sherief.task.domain.dto.UpdateTaskRequestDto;
 import me.sherief.task.domain.entity.Task;
 import me.sherief.task.domain.entity.TaskPriority;
 import me.sherief.task.domain.entity.TaskStatus;
@@ -32,6 +34,25 @@ class TaskMapperImplTest {
         assertThat(entity.title()).isEqualTo(dto.title());
         assertThat(entity.description()).isEqualTo(dto.description());
         assertThat(entity.dueDate()).isEqualTo(dto.dueDate());
+        assertThat(entity.priority()).isEqualTo(dto.priority());
+    }
+
+    @Test
+    void givenValidUpdateTaskRequestDto_whenFromDto_thenAllFieldsAreMappedToEntity() {
+        UpdateTaskRequestDto dto = new UpdateTaskRequestDto(
+                "Title",
+                "Desc",
+                LocalDate.now(),
+                TaskStatus.OPEN,
+                TaskPriority.HIGH
+        );
+
+        UpdateTaskRequest entity = taskMapper.fromDto(dto);
+
+        assertThat(entity.title()).isEqualTo(dto.title());
+        assertThat(entity.description()).isEqualTo(dto.description());
+        assertThat(entity.dueDate()).isEqualTo(dto.dueDate());
+        assertThat(entity.status()).isEqualTo(dto.status());
         assertThat(entity.priority()).isEqualTo(dto.priority());
     }
 

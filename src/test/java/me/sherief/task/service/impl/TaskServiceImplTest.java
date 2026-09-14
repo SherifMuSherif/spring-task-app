@@ -1,9 +1,11 @@
 package me.sherief.task.service.impl;
 
 import me.sherief.task.domain.CreateTaskRequest;
+import me.sherief.task.domain.UpdateTaskRequest;
 import me.sherief.task.domain.entity.Task;
 import me.sherief.task.domain.entity.TaskPriority;
 import me.sherief.task.domain.entity.TaskStatus;
+import me.sherief.task.exception.TaskNotFoundException;
 import me.sherief.task.repository.TaskRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,13 +17,15 @@ import org.springframework.data.domain.Sort;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.times;
 
 @ExtendWith(MockitoExtension.class)
 class TaskServiceImplTest {
@@ -113,6 +117,73 @@ class TaskServiceImplTest {
         assertThat(sortOrder).isNotNull();
         assertThat(sortOrder.getDirection()).isEqualTo(Sort.Direction.ASC);
 
+    }
+
+    @Test
+    void givenTaskIdDoesNotExist_whenUpdateTask_thenThrowsTaskNotFoundException() {
+        UUID notExistID = UUID.randomUUID();
+
+        UpdateTaskRequest request = new UpdateTaskRequest(
+                "Task",
+                "New Description",
+                null,
+                TaskStatus.COMPLETE,
+                TaskPriority.HIGH
+        );
+
+        given(taskRepository.findById(notExistID)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> taskService.updateTask(notExistID, request))
+                .isInstanceOf(TaskNotFoundException.class)
+                .hasMessageContaining(notExistID.toString());
+
+        then(taskRepository).should(times(1)).findById(notExistID);
+        then(taskRepository).shouldHaveNoMoreInteractions();
+
+    }
+
+    @Test
+    void givenValidUpdateRequest_whenUpdateTask_thenStatusIsOkAndTaskIsUpdated() {
+
+        UpdateTaskRequest request = new UpdateTaskRequest(
+                "Updated Task",
+                "New Description",
+                null,
+                TaskStatus.COMPLETE,
+                TaskPriority.LOW
+        );
+
+        UUID id = UUID.randomUUID();
+        Instant originalUpdated = Instant.now().minusSeconds(3000);
+
+        Task existingTask = new Task(
+                id,
+                "Old Task",
+                "Description",
+                null,
+                TaskStatus.OPEN,
+                TaskPriority.HIGH,
+                Instant.now().minusSeconds(5000),
+                originalUpdated
+        );
+
+        given(taskRepository.findById(id)).willReturn(Optional.of(existingTask));
+        given(taskRepository.save(any(Task.class))).willAnswer(invocation -> invocation.getArgument(0));
+
+        Instant beforeUpdate = Instant.now();
+
+        Task updatedTask = taskService.updateTask(id, request);
+
+        Instant afterUpdate = Instant.now();
+
+        assertThat(updatedTask.getUpdated()).isBetween(beforeUpdate, afterUpdate);
+        assertThat(updatedTask.getTitle()).isEqualTo("Updated Task");
+        assertThat(updatedTask.getDescription()).isEqualTo("New Description");
+        assertThat(updatedTask.getPriority()).isEqualTo(TaskPriority.LOW);
+        assertThat(updatedTask.getStatus()).isEqualTo(TaskStatus.COMPLETE);
+
+        then(taskRepository).should(times(1)).findById(id);
+        then(taskRepository).should(times(1)).save(existingTask);
     }
 
 }

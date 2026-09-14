@@ -2,6 +2,7 @@ package me.sherief.task;
 
 import me.sherief.task.domain.dto.CreateTaskRequestDto;
 import me.sherief.task.domain.dto.TaskDto;
+import me.sherief.task.domain.dto.UpdateTaskRequestDto;
 import me.sherief.task.domain.entity.Task;
 import me.sherief.task.domain.entity.TaskPriority;
 import me.sherief.task.domain.entity.TaskStatus;
@@ -78,6 +79,11 @@ class TaskApplicationIT {
         assertThat(taskInDb.get().getPriority()).isEqualTo(requestDto.priority());
         assertThat(taskInDb.get().getStatus()).isEqualTo(TaskStatus.OPEN);
 
+        assertThat(responseBody.title()).isEqualTo(requestDto.title());
+        assertThat(responseBody.description()).isEqualTo(requestDto.description());
+        assertThat(responseBody.priority()).isEqualTo(requestDto.priority());
+        assertThat(responseBody.status()).isEqualTo(TaskStatus.OPEN);
+
     }
 
     @Test
@@ -143,6 +149,75 @@ class TaskApplicationIT {
                         tuple("Task Two", TaskPriority.HIGH)
                 );
 
+    }
+
+    @Test
+    void givenValidUpdateTaskRequestDto_whenUpdateTaskRequestIsSent_thenTaskIsUpdatedAndPersistedToDatabase() {
+
+        Task existingTask = new Task(
+                null,
+                "Original Task",
+                "Original Description",
+                null,
+                TaskStatus.OPEN,
+                TaskPriority.LOW,
+                Instant.parse("2026-01-01T10:00:00Z"),
+                Instant.parse("2026-01-01T10:00:00Z")
+        );
+
+        Task savedTask = taskRepository.save(existingTask);
+
+        UpdateTaskRequestDto requestDto = new UpdateTaskRequestDto(
+                "Updated Task",
+                "Updated Description",
+                null,
+                TaskStatus.COMPLETE,
+                TaskPriority.HIGH
+        );
+
+        TaskDto responseBody = restClient.put()
+                .uri("/api/v1/tasks/{taskId}", savedTask.getId())
+                .body(requestDto)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(TaskDto.class)
+                .returnResult()
+                .getResponseBody();
+
+        assertThat(responseBody).isNotNull();
+        assertThat(responseBody.id()).isEqualTo(savedTask.getId());
+        assertThat(responseBody.title()).isEqualTo(requestDto.title());
+        assertThat(responseBody.description()).isEqualTo(requestDto.description());
+        assertThat(responseBody.status()).isEqualTo(requestDto.status());
+        assertThat(responseBody.priority()).isEqualTo(requestDto.priority());
+
+        Optional<Task> taskInDb = taskRepository.findById(savedTask.getId());
+
+        assertThat(taskInDb).isPresent();
+        assertThat(taskInDb.get().getTitle()).isEqualTo(requestDto.title());
+        assertThat(taskInDb.get().getDescription()).isEqualTo(requestDto.description());
+        assertThat(taskInDb.get().getStatus()).isEqualTo(requestDto.status());
+        assertThat(taskInDb.get().getPriority()).isEqualTo(requestDto.priority());
+
+    }
+
+    @Test
+    void givenTaskIdDoesNotExist_whenUpdateTaskRequestIsSent_thenNotFoundIsReturned() {
+        UUID taskId = UUID.randomUUID();
+
+        UpdateTaskRequestDto requestDto = new UpdateTaskRequestDto(
+                "Updated Task",
+                "Updated Description",
+                null,
+                TaskStatus.COMPLETE,
+                TaskPriority.HIGH
+        );
+
+        restClient.put()
+                .uri("/api/v1/tasks/{taskId}", taskId)
+                .body(requestDto)
+                .exchange()
+                .expectStatus().isNotFound();
     }
 
 }
